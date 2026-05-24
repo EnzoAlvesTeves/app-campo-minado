@@ -3,9 +3,10 @@ package com.enzo.campominado
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
-import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -14,13 +15,15 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.appbar.MaterialToolbar
-import org.json.JSONArray
-import org.json.JSONObject
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class ScoreboardActivity : AppCompatActivity() {
 
     private var currentPlayerName = "Jogador"
     private var currentPlayerAvatar = "👦"
+    private lateinit var rvScores: RecyclerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,11 +44,10 @@ class ScoreboardActivity : AppCompatActivity() {
             finish()
         }
 
-        val rvScores: RecyclerView = findViewById(R.id.recyclerViewScores)
+        rvScores = findViewById(R.id.recyclerViewScores)
         rvScores.layoutManager = LinearLayoutManager(this)
 
         val prefs = getSharedPreferences("Scores", Context.MODE_PRIVATE)
-        
         currentPlayerName = intent.getStringExtra("PLAYER_NAME") ?: prefs.getString("LAST_PLAYER_NAME", "Jogador") ?: "Jogador"
         currentPlayerAvatar = intent.getStringExtra("PLAYER_AVATAR") ?: prefs.getString("LAST_PLAYER_AVATAR", "👦") ?: "👦"
 
@@ -56,15 +58,46 @@ class ScoreboardActivity : AppCompatActivity() {
             val difficulty = intent.getStringExtra("DIFFICULTY") ?: "Fácil"
             val points = intent.getIntExtra("POINTS", 0)
 
-            saveScore(currentPlayerName, time, difficulty, win, points, currentPlayerAvatar)
+            val newScore = Score(currentPlayerName, time, difficulty, win, points, currentPlayerAvatar)
+            saveScoreToApi(newScore)
+        } else {
+            loadScoresFromApi()
         }
-
-        val scores = getScores().sortedByDescending { it.points }
-        rvScores.adapter = ScoreAdapter(scores)
 
         findViewById<Button>(R.id.btnPlayAgain).setOnClickListener {
             showDifficultyDialog()
         }
+    }
+
+    private fun loadScoresFromApi() {
+        RetrofitClient.instance.getScores().enqueue(object : Callback<List<Score>> {
+            override fun onResponse(call: Call<List<Score>>, response: Response<List<Score>>) {
+                if (response.isSuccessful) {
+                    val scores = response.body() ?: emptyList()
+                    rvScores.adapter = ScoreAdapter(scores)
+                } else {
+                    Toast.makeText(this@ScoreboardActivity, "Erro ao carregar ranking", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onFailure(call: Call<List<Score>>, t: Throwable) {
+                Log.e("API", "Erro: ${t.message}")
+                Toast.makeText(this@ScoreboardActivity, "Sem conexão com servidor", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun saveScoreToApi(score: Score) {
+        RetrofitClient.instance.saveScore(score).enqueue(object : Callback<Map<String, String>> {
+            override fun onResponse(call: Call<Map<String, String>>, response: Response<Map<String, String>>) {
+                loadScoresFromApi() // Recarrega a lista após salvar
+            }
+
+            override fun onFailure(call: Call<Map<String, String>>, t: Throwable) {
+                Log.e("API", "Erro ao salvar: ${t.message}")
+                loadScoresFromApi() // Tenta carregar mesmo se falhar o save
+            }
+        })
     }
 
     private fun showDifficultyDialog() {
@@ -100,46 +133,5 @@ class ScoreboardActivity : AppCompatActivity() {
         }
         startActivity(intent)
         finish()
-    }
-
-    private fun saveScore(name: String, time: Int, difficulty: String, win: Boolean, points: Int, avatar: String) {
-        val prefs = getSharedPreferences("Scores", Context.MODE_PRIVATE)
-        val scoresList = getScores().toMutableList()
-        scoresList.add(Score(name, time, difficulty, win, points, avatar))
-        
-        val jsonArray = JSONArray()
-        val topScores = scoresList.sortedByDescending { it.points }.take(50)
-        
-        topScores.forEach {
-            val obj = JSONObject()
-            obj.put("name", it.name)
-            obj.put("time", it.time)
-            obj.put("difficulty", it.difficulty)
-            obj.put("win", it.win)
-            obj.put("points", it.points)
-            obj.put("avatar", it.avatar)
-            jsonArray.put(obj)
-        }
-        
-        prefs.edit().putString("SCORES_JSON", jsonArray.toString()).apply()
-    }
-
-    private fun getScores(): List<Score> {
-        val prefs = getSharedPreferences("Scores", Context.MODE_PRIVATE)
-        val jsonString = prefs.getString("SCORES_JSON", null) ?: return emptyList()
-        val jsonArray = JSONArray(jsonString)
-        val scores = mutableListOf<Score>()
-        for (i in 0 until jsonArray.length()) {
-            val obj = jsonArray.getJSONObject(i)
-            scores.add(Score(
-                obj.getString("name"),
-                obj.getInt("time"),
-                obj.getString("difficulty"),
-                obj.optBoolean("win", true),
-                obj.optInt("points", 0),
-                obj.optString("avatar", "👦")
-            ))
-        }
-        return scores
     }
 }

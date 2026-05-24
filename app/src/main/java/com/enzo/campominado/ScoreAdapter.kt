@@ -35,10 +35,7 @@ class ScoreAdapter(private val scores: List<Score>) : RecyclerView.Adapter<Score
         holder.textAvatar.text = score.avatar
         holder.textName.text = score.name
         
-        // Formatar tempo MM:SS
-        val minutes = score.time / 60
-        val seconds = score.time % 60
-        holder.textTime.text = String.format("%02d:%02d", minutes, seconds)
+        holder.textTime.text = "${score.points} pts"
         
         if (score.win) {
             holder.textTime.setTextColor(Color.parseColor("#388E3C"))

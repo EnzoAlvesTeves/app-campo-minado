@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: campominado_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: campominado
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
+    networks:
+      - campominado_net
+
+  api:
+    build: ./api
+    container_name: campominado_api
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+    environment:
+      DB_HOST: db
+      DB_NAME: campominado
+      DB_USER: root
+      DB_PASS: root
+    networks:
+      - campominado_net
+
+networks:
+  campominado_net:
+    driver: bridge
