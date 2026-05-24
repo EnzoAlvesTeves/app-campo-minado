@@ -6,7 +6,9 @@ import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.View
 import android.widget.GridLayout
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
@@ -24,13 +26,13 @@ class MainActivity : AppCompatActivity() {
     private var minesCount = 10
     private var difficultyName = "Fácil"
     private var playerName = "Jogador"
+    private var playerAvatar = "👦"
 
     private lateinit var gridLayout: GridLayout
-    private lateinit var statusText: TextView
-    private lateinit var restartButton: MaterialButton
     private lateinit var mineCountText: TextView
     private lateinit var timerText: TextView
     private lateinit var toolbar: MaterialToolbar
+    private lateinit var btnRestartHeader: LinearLayout
     
     private lateinit var mines: Array<BooleanArray>
     private lateinit var revealed: Array<BooleanArray>
@@ -45,7 +47,9 @@ class MainActivity : AppCompatActivity() {
         override fun run() {
             if (!gameOver) {
                 timeSeconds++
-                timerText.text = "Tempo: $timeSeconds"
+                val minutes = timeSeconds / 60
+                val seconds = timeSeconds % 60
+                timerText.text = String.format("%02d:%02d", minutes, seconds)
                 timerHandler.postDelayed(this, 1000)
             }
         }
@@ -55,6 +59,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+        
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
             val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
             v.setPadding(systemBars.left, 0, systemBars.right, systemBars.bottom)
@@ -68,19 +73,19 @@ class MainActivity : AppCompatActivity() {
         }
 
         gridLayout = findViewById(R.id.gridLayout)
-        statusText = findViewById(R.id.statusText)
-        restartButton = findViewById(R.id.restartButton)
         mineCountText = findViewById(R.id.mineCountText)
         timerText = findViewById(R.id.timerText)
+        btnRestartHeader = findViewById(R.id.btnRestartHeader)
 
-        // Carregar parâmetros da dificuldade e jogador
+        // Carregar parâmetros
         rows = intent.getIntExtra("ROWS", 8)
         cols = intent.getIntExtra("COLS", 8)
         minesCount = intent.getIntExtra("MINES", 10)
         difficultyName = intent.getStringExtra("DIFFICULTY") ?: "Fácil"
         playerName = intent.getStringExtra("PLAYER_NAME") ?: "Jogador"
+        playerAvatar = intent.getStringExtra("PLAYER_AVATAR") ?: "👦"
 
-        restartButton.setOnClickListener {
+        btnRestartHeader.setOnClickListener {
             startGame()
         }
 
@@ -94,15 +99,13 @@ class MainActivity : AppCompatActivity() {
         timeSeconds = 0
         timerHandler.removeCallbacks(timerRunnable)
         
-        statusText.text = "$playerName - $difficultyName"
-        mineCountText.text = "Minas: $minesCount"
-        timerText.text = "Tempo: 0"
+        mineCountText.text = "$minesCount"
+        timerText.text = "00:00"
         
         gridLayout.removeAllViews()
         gridLayout.columnCount = cols
         gridLayout.rowCount = rows
         
-        // Inicializar matrizes
         mines = Array(rows) { BooleanArray(cols) }
         revealed = Array(rows) { BooleanArray(cols) }
         flagged = Array(rows) { BooleanArray(cols) }
@@ -117,9 +120,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Criar botões no GridLayout
         val displayMetrics = resources.displayMetrics
-        val availableWidth = displayMetrics.widthPixels - (32 * displayMetrics.density).toInt()
+        val availableWidth = displayMetrics.widthPixels - (64 * displayMetrics.density).toInt()
         val size = (availableWidth / cols).coerceAtMost((48 * displayMetrics.density).toInt())
 
         for (i in 0 until rows) {
@@ -133,18 +135,15 @@ class MainActivity : AppCompatActivity() {
                     setPadding(0, 0, 0, 0)
                     minWidth = 0
                     minHeight = 0
-                    textSize = if (cols > 10) 12f else 16f
+                    textSize = if (cols > 10) 14f else 18f
                     insetTop = 0
                     insetBottom = 0
-                    cornerRadius = 0
+                    cornerRadius = 4
                     strokeWidth = 1
-                    strokeColor = ColorStateList.valueOf(Color.DKGRAY)
-                    backgroundTintList = ColorStateList.valueOf(Color.LTGRAY)
+                    strokeColor = ColorStateList.valueOf(Color.parseColor("#2D3748"))
+                    backgroundTintList = ColorStateList.valueOf(Color.parseColor("#334155")) // Cor das células fechadas
                     
-                    setOnClickListener {
-                        onCellClick(i, j)
-                    }
-                    
+                    setOnClickListener { onCellClick(i, j) }
                     setOnLongClickListener {
                         onCellLongClick(i, j)
                         true
@@ -173,8 +172,8 @@ class MainActivity : AppCompatActivity() {
             endGame(false)
         } else {
             val count = countAdjacentMines(row, col)
-            button.backgroundTintList = ColorStateList.valueOf(Color.WHITE)
-            button.strokeColor = ColorStateList.valueOf(Color.LTGRAY)
+            button.backgroundTintList = ColorStateList.valueOf(Color.parseColor("#94A3B8")) // Cor da célula aberta
+            button.strokeColor = ColorStateList.valueOf(Color.parseColor("#1C242D"))
             if (count > 0) {
                 button.text = count.toString()
                 button.setTextColor(getNumberColor(count))
@@ -188,10 +187,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun onCellLongClick(row: Int, col: Int) {
         if (gameOver || revealed[row][col]) return
-        
         val index = row * cols + col
         val button = gridLayout.getChildAt(index) as MaterialButton
-        
         if (flagged[row][col]) {
             flagged[row][col] = false
             button.text = ""
@@ -201,8 +198,7 @@ class MainActivity : AppCompatActivity() {
             button.text = "🚩"
             flagsCount++
         }
-        
-        mineCountText.text = "Minas: ${minesCount - flagsCount}"
+        mineCountText.text = "${minesCount - flagsCount}"
     }
 
     private fun endGame(win: Boolean) {
@@ -216,24 +212,28 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
+        val difficultyMultiplier = when(difficultyName) {
+            "Médio" -> 1.5
+            "Difícil" -> 2.0
+            else -> 1.0
+        }
+        
+        var points = (revealedCount * 100 * difficultyMultiplier).toInt()
         if (win) {
-            statusText.text = "Você venceu!"
-            Toast.makeText(this, "Parabéns!", Toast.LENGTH_SHORT).show()
-        } else {
-            statusText.text = "Você perdeu!"
-            Toast.makeText(this, "Game Over!", Toast.LENGTH_SHORT).show()
-            revealAllMines()
+            val timeBonus = (500 - timeSeconds).coerceAtLeast(0) * 10
+            points += (5000 * difficultyMultiplier).toInt() + timeBonus
         }
 
-        // Redirecionar para o placar após 2 segundos
+        if (!win) revealAllMines()
+
         Handler(Looper.getMainLooper()).postDelayed({
             val intent = Intent(this, ScoreboardActivity::class.java).apply {
                 putExtra("WIN", win)
                 putExtra("TIME", timeSeconds)
                 putExtra("DIFFICULTY", difficultyName)
                 putExtra("PLAYER_NAME", playerName)
-                putExtra("REVEALED", revealedCount)
-                putExtra("TOTAL", (rows * cols) - minesCount)
+                putExtra("PLAYER_AVATAR", playerAvatar)
+                putExtra("POINTS", points)
                 putExtra("FROM_GAME", true)
             }
             startActivity(intent)
@@ -247,9 +247,7 @@ class MainActivity : AppCompatActivity() {
             for (j in -1..1) {
                 val r = row + i
                 val c = col + j
-                if (r in 0 until rows && c in 0 until cols && mines[r][c]) {
-                    count++
-                }
+                if (r in 0 until rows && c in 0 until cols && mines[r][c]) count++
             }
         }
         return count
@@ -260,24 +258,17 @@ class MainActivity : AppCompatActivity() {
             for (j in -1..1) {
                 val r = row + i
                 val c = col + j
-                if (r in 0 until rows && c in 0 until cols && !revealed[r][c]) {
-                    onCellClick(r, c)
-                }
+                if (r in 0 until rows && c in 0 until cols && !revealed[r][c]) onCellClick(r, c)
             }
         }
     }
 
     private fun getNumberColor(count: Int): Int {
         return when (count) {
-            1 -> Color.BLUE
-            2 -> Color.parseColor("#388E3C") // Verde
-            3 -> Color.RED
-            4 -> Color.parseColor("#191970") // Azul escuro
-            5 -> Color.parseColor("#8B0000") // Marrom/Vinho
-            6 -> Color.CYAN
-            7 -> Color.BLACK
-            8 -> Color.GRAY
-            else -> Color.BLACK
+            1 -> Color.parseColor("#3B82F6") // Azul
+            2 -> Color.parseColor("#10B981") // Verde
+            3 -> Color.parseColor("#EF4444") // Vermelho
+            else -> Color.WHITE
         }
     }
 
@@ -301,9 +292,6 @@ class MainActivity : AppCompatActivity() {
                 if (revealed[i][j]) revealedCount++
             }
         }
-
-        if (revealedCount == (rows * cols) - minesCount) {
-            endGame(true)
-        }
+        if (revealedCount == (rows * cols) - minesCount) endGame(true)
     }
 }
