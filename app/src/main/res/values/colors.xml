@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="bg_dark">#12181F</color>
+    <color name="bg_card">#1C242D</color>
+    <color name="primary_blue">#2E7D32</color> <!-- Usei um verde para combinar com o jogo, mas o azul da imagem é #2563EB -->
+    <color name="accent_blue">#3B82F6</color>
+    <color name="text_white">#FFFFFF</color>
+    <color name="text_gray">#94A3B8</color>
+    <color name="gold">#F59E0B</color>
+    <color name="silver">#94A3B8</color>
+    <color name="bronze">#D97706</color>
 </resources>

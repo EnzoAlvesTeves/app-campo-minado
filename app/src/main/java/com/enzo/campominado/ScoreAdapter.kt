@@ -7,18 +7,11 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-data class Score(
-    val name: String,
-    val time: Int,
-    val difficulty: String,
-    val win: Boolean,
-    val points: Int
-)
-
 class ScoreAdapter(private val scores: List<Score>) : RecyclerView.Adapter<ScoreAdapter.ScoreViewHolder>() {
 
     class ScoreViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val textDifficulty: TextView = view.findViewById(R.id.textDifficulty)
+        val textRank: TextView = view.findViewById(R.id.textRank)
+        val textAvatar: TextView = view.findViewById(R.id.textAvatar)
         val textName: TextView = view.findViewById(R.id.textName)
         val textTime: TextView = view.findViewById(R.id.textTime)
     }
@@ -30,12 +23,22 @@ class ScoreAdapter(private val scores: List<Score>) : RecyclerView.Adapter<Score
 
     override fun onBindViewHolder(holder: ScoreViewHolder, position: Int) {
         val score = scores[position]
-        holder.textDifficulty.text = score.difficulty
-        holder.textName.text = if (score.win) "🏆 ${score.name}" else "💀 ${score.name}"
+        val rank = position + 1
+        
+        holder.textRank.text = when (rank) {
+            1 -> "🥇"
+            2 -> "🥈"
+            3 -> "🥉"
+            else -> rank.toString()
+        }
+        
+        holder.textAvatar.text = score.avatar
+        holder.textName.text = score.name
+        
         holder.textTime.text = "${score.points} pts"
         
         if (score.win) {
-            holder.textTime.setTextColor(Color.parseColor("#388E3C")) // Verde
+            holder.textTime.setTextColor(Color.parseColor("#388E3C"))
         } else {
             holder.textTime.setTextColor(Color.GRAY)
         }

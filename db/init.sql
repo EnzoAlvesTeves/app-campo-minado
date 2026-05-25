@@ -1,0 +1,13 @@
+CREATE DATABASE IF NOT EXISTS campominado;
+USE campominado;
+
+CREATE TABLE IF NOT EXISTS scores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    avatar VARCHAR(10) NOT NULL,
+    time INT NOT NULL,
+    difficulty VARCHAR(20) NOT NULL,
+    points INT NOT NULL,
+    win TINYINT(1) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
